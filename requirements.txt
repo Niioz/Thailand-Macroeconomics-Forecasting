@@ -1,0 +1,12 @@
+streamlit
+pandas
+numpy
+yfinance
+pandas-datareader
+statsmodels
+prophet
+scikit-learn
+plotly
+hmmlearn
+arch
+shap
