@@ -1,56 +1,13 @@
-# Thailand Quantitative Research Engine
+# Thailand Macroeconomic Forecasts
 
-An interactive macro quant dashboard for Thailand. Fetches real economic and market data, runs econometric and machine learning models, and displays results through a Streamlit web UI.
+World Bank-only Streamlit dashboard for Thailand. Uses GDP (NY.GDP.MKTP.CD), inflation (FP.CPI.TOTL.ZG), lending interest rates (FR.INR.LEND), and official THB/USD exchange rates (PA.NUS.FCRF).
 
-## Data Sources
+Annual observations are interpolated to monthly frequency within available annual anchors. Interpolated values are estimates, not observed monthly data. The latest complete history may lag the present. VAR forecasts GDP, inflation and lending rates; Prophet forecasts the official exchange rate.
 
-| Source | Data | Frequency |
-|---|---|---|
-| World Bank (via `pandas-datareader`) | GDP, Inflation (YoY %), Lending Interest Rate | Annual (interpolated to monthly) |
-| Yahoo Finance (via `yfinance`) | SET Index (^SET.BK), USD/THB FX (THB=X) | Daily (resampled to month-end for macro) |
+Daily SET prices are not supplied by these World Bank indicators. Daily HMM/GARCH, trading signals, SHAP and strategy backtests are excluded from the dashboard. No synthetic daily market prices are generated.
 
-## Models
+Install with `pip install -r requirements.txt`, then run `streamlit run app.py`.
 
-| Model | Purpose |
-|---|---|
-| **Vector Autoregression (VAR)** | Forecasts GDP, Inflation, and Interest Rate jointly over 12 months using their historical relationships |
-| **Prophet (Meta)** | Forecasts USD/THB exchange rate with yearly seasonality |
-| **Random Forest Classifier** | Predicts probability of a 3-month SET Index downturn using lagged macro features |
-| **SHAP (TreeExplainer)** | Explainability — shows which features drove the latest downturn probability |
-| **Gaussian HMM (3-state)** | Detects market regime (Bear / Neutral / Bull) from daily SET returns |
-| **GARCH(1,1)** | Forecasts 30-day forward annualized volatility with volatility clustering |
+Click **Refresh data and retry** to clear cached downloads and forecasts.
 
-## Dashboard Modules
-
-1. **Macro & Regime Status** — KPI cards showing current HMM regime, downturn risk, inflation, and interest rate
-2. **Strategy Tear Sheet** — Backtest comparing a macro-timing strategy (cash when risk > 50%) vs buy-and-hold SET Index, with Sharpe ratio, total return, and max drawdown
-3. **GARCH Volatility** — Historical rolling 21-day volatility overlaid with 30-day GARCH forecast
-4. **AI Explainability (SHAP)** — Waterfall plot explaining the latest downturn probability prediction
-5. **Macro Forecasts** — VAR forecasts for GDP, Inflation, Interest Rate and Prophet forecast for USD/THB
-
-## Quick Start
-
-```bash
-pip install -r requirements.txt
-streamlit run app.py
-```
-
-If a provider returns no usable history, the dashboard shows a data-availability message. Click **Refresh data and retry** to clear the cached downloads and model results. In particular, Yahoo Finance may return only a single quote for `^SET.BK`; this is insufficient to calculate historical SET returns, so the dashboard waits for usable history rather than fitting models to an empty dataset.
-
-VAR requires at least nine complete monthly macro observations after cleaning and limits its lag search to the available sample size. A zero-lag selection uses the estimated mean monthly change to produce the forecast.
-
-Run the offline regression checks with:
-
-```bash
-python -m unittest discover -s tests -v
-```
-
-## Requirements
-
-streamlit, pandas, numpy, yfinance, pandas-datareader, statsmodels, prophet, scikit-learn, plotly, hmmlearn, arch, shap
-
-## Notes
-
-- World Bank data is annual; monthly interpolation uses linear resampling. Forecasts using interpolated data should be interpreted with caution.
-- The backtest assumes zero transaction costs and a single 60/40 train/test split — not a walk-forward analysis.
-- This is a research prototype, not a live trading system.
+Run regression checks with `python -m unittest discover -s tests -v`.
