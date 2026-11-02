@@ -35,6 +35,16 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
+If a provider returns no usable history, the dashboard shows a data-availability message. Click **Refresh data and retry** to clear the cached downloads and model results. In particular, Yahoo Finance may return only a single quote for `^SET.BK`; this is insufficient to calculate historical SET returns, so the dashboard waits for usable history rather than fitting models to an empty dataset.
+
+VAR requires at least nine complete monthly macro observations after cleaning and limits its lag search to the available sample size. A zero-lag selection uses the estimated mean monthly change to produce the forecast.
+
+Run the offline regression checks with:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
 ## Requirements
 
 streamlit, pandas, numpy, yfinance, pandas-datareader, statsmodels, prophet, scikit-learn, plotly, hmmlearn, arch, shap

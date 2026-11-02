@@ -29,13 +29,23 @@ def run_all_models(df_macro, df_daily):
     
     return var_forecast, prophet_forecast, prob, explainer, shap_vals, latest_data, bt_results, bt_metrics, df_regime, current_regime, garch_forecast, hist_vol
 
+if st.button("Refresh data and retry"):
+    load_all_data.clear()
+    run_all_models.clear()
+
 with st.spinner("Fetching data and running quant models..."):
-    df_macro, df_daily = load_all_data()
-    if df_macro is None or df_daily is None:
-        st.error("Failed to fetch data. Please try again later.")
+    try:
+        df_macro, df_daily = load_all_data()
+        if df_macro is None or df_daily is None or df_macro.empty or df_daily.empty:
+            raise ValueError(
+                "No usable macroeconomic or SET Index history is available. "
+                "Please refresh the data or try again later."
+            )
+        outputs = run_all_models(df_macro, df_daily)
+    except ValueError as error:
+        st.error(str(error))
         st.stop()
-        
-    outputs = run_all_models(df_macro, df_daily)
+
     (var_forecast, prophet_forecast, prob, explainer, shap_vals, latest_data, 
      bt_results, bt_metrics, df_regime, current_regime, garch_forecast, hist_vol) = outputs
 

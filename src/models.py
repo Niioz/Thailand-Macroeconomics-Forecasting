@@ -11,16 +11,38 @@ import shap
 
 def run_var_model(df, steps=12):
     var_cols = ['GDP', 'Inflation_YoY', 'Interest_Rate']
-    df_var = df[var_cols].dropna()
+    missing_cols = [col for col in var_cols if col not in df.columns]
+    if missing_cols:
+        raise ValueError(f"VAR input is missing required columns: {', '.join(missing_cols)}.")
+    df_var = df[var_cols].replace([np.inf, -np.inf], np.nan).dropna().sort_index()
     
     df_var_diff = df_var.diff().dropna()
+    # Match statsmodels' estimability bound for three equations and an intercept.
+    maxlags = min(12, (len(df_var_diff) - len(var_cols) - 1) // (len(var_cols) + 1))
+    if maxlags < 1:
+        raise ValueError(
+            "VAR needs at least 9 complete monthly observations of GDP, inflation, "
+            f"and interest rates; found {len(df_var)}. Please refresh the data or use a longer history."
+        )
+
     model = VAR(df_var_diff)
     try:
-        results = model.fit(maxlags=12, ic='aic')
-    except Exception:
-        results = model.fit(maxlags=4)
+        try:
+            results = model.fit(maxlags=maxlags, ic='aic')
+        except (ValueError, np.linalg.LinAlgError):
+            # Interpolated annual series can have singular covariance matrices.
+            results = model.fit(maxlags=min(4, maxlags))
+    except (ValueError, np.linalg.LinAlgError) as error:
+        raise ValueError(
+            "VAR could not be estimated from the available macroeconomic history. "
+            "The series need more observations or independent variation."
+        ) from error
         
-    forecast_diff = results.forecast(df_var_diff.values[-results.k_ar:], steps=steps)
+    if results.k_ar == 0:
+        # A VAR(0) predicts the mean change; statsmodels 0.14 cannot forecast it.
+        forecast_diff = np.tile(results.intercept, (steps, 1))
+    else:
+        forecast_diff = results.forecast(df_var_diff.values[-results.k_ar:], steps=steps)
     last_obs = df_var.iloc[-1]
     forecast = pd.DataFrame(forecast_diff, columns=var_cols)
     forecast = forecast.cumsum() + last_obs.values
