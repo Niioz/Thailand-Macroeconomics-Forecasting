@@ -51,3 +51,25 @@ def fetch_macro_data(years=10):
     if len(df_macro) < 9:
         raise DataUnavailableError("World Bank returned fewer than nine complete monthly observations. Please try a longer history.")
     return df_macro
+
+
+def load_set_history(csv_file):
+    """Read an Investing.com daily SET historical-data CSV without inventing prices."""
+    try:
+        prices = pd.read_csv(csv_file)
+        prices.columns = prices.columns.str.strip().str.lstrip('\ufeff')
+        if not {'Date', 'Price'}.issubset(prices.columns):
+            raise ValueError("The CSV must contain Date and Price columns from Investing.com.")
+        dates = pd.to_datetime(prices['Date'], format='mixed', errors='coerce')
+        close = pd.to_numeric(prices['Price'].astype(str).str.replace(',', '', regex=False), errors='coerce')
+        if dates.isna().any() or close.isna().any() or not np.isfinite(close).all() or (close <= 0).any():
+            raise ValueError("The CSV contains invalid dates or closing prices. Please export daily SET history again.")
+        history = pd.DataFrame({'Close': close.to_numpy()}, index=pd.DatetimeIndex(dates, name='Date')).sort_index()
+        if history.index.has_duplicates:
+            raise ValueError("The CSV contains duplicate dates. Please export daily history with one row per trading day.")
+        if len(history) < 2:
+            raise ValueError("Please upload at least two daily SET closing prices.")
+        history['Return'] = history['Close'].pct_change(fill_method=None) * 100
+        return history
+    except (pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeError) as error:
+        raise ValueError("Could not read the Investing.com CSV. Please upload its original CSV export.") from error

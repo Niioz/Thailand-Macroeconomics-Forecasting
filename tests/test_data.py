@@ -17,3 +17,19 @@ class DataTests(unittest.TestCase):
     @patch('src.data.wb.download', side_effect=ConnectionError('offline'))
     def test_unavailable_source(self, download):
         with self.assertRaises(DataUnavailableError): fetch_macro_data()
+
+
+class SetCsvTests(unittest.TestCase):
+    def test_investing_export_is_sorted_and_returns_are_correct(self):
+        from io import StringIO
+        from src.data import load_set_history
+        frame = load_set_history(StringIO('Date,Price\n"11/04/2026","1,020.00"\n"11/03/2026","1,000.00"\n'))
+        self.assertEqual(frame.iloc[0]['Close'], 1000)
+        self.assertAlmostEqual(frame.iloc[1]['Return'], 2)
+        self.assertTrue(np.isnan(frame.iloc[0]['Return']))
+    def test_invalid_and_duplicate_prices_are_rejected(self):
+        from io import StringIO
+        from src.data import load_set_history
+        for content in ['Date,Price\n11/03/2026,0\n11/04/2026,100\n', 'Date,Price\n11/03/2026,100\n11/03/2026,101\n', 'Date,Price\ninvalid,100\n11/04/2026,101\n']:
+            with self.subTest(content=content):
+                with self.assertRaises(ValueError): load_set_history(StringIO(content))
