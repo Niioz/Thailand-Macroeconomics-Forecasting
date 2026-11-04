@@ -53,14 +53,18 @@ def fetch_macro_data(years=10):
     return df_macro
 
 
-def load_set_history(csv_file):
+def load_set_history(csv_file, source="Investing.com"):
     """Read an Investing.com daily SET historical-data CSV without inventing prices."""
     try:
         prices = pd.read_csv(csv_file)
         prices.columns = prices.columns.str.strip().str.lstrip('\ufeff')
+        if source == "SET":
+            prices.rename(columns={'Close': 'Price', 'Closing': 'Price', 'Index': 'Price'}, inplace=True)
+        if source == 'SET':
+            prices.rename(columns={'Close': 'Price', 'Closing': 'Price', 'Index': 'Price'}, inplace=True)
         if not {'Date', 'Price'}.issubset(prices.columns):
             raise ValueError("The CSV must contain Date and Price columns from Investing.com.")
-        dates = pd.to_datetime(prices['Date'], format='mixed', errors='coerce')
+        dates = pd.to_datetime(prices['Date'], format='mixed', errors='coerce', dayfirst=(source == 'SET'))
         close = pd.to_numeric(prices['Price'].astype(str).str.replace(',', '', regex=False), errors='coerce')
         if dates.isna().any() or close.isna().any() or not np.isfinite(close).all() or (close <= 0).any():
             raise ValueError("The CSV contains invalid dates or closing prices. Please export daily SET history again.")
